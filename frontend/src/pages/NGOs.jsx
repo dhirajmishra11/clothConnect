@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 import { useSelector } from "react-redux";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -14,7 +14,7 @@ function NGOs() {
   useEffect(() => {
     const fetchNGOs = async () => {
       try {
-        const response = await axios.get("/api/ngos", {
+        const response = await axiosInstance.get("/ngos", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setNGOs(response.data);
@@ -30,7 +30,7 @@ function NGOs() {
   const handleDeactivate = async (ngoId) => {
     setLoading(true);
     try {
-      await axios.delete(`/api/users/${ngoId}`, {
+      await axiosInstance.delete(`/users/${ngoId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNGOs((prev) => prev.filter((ngo) => ngo._id !== ngoId));
