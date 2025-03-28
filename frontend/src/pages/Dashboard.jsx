@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/slices/authSlice";
 import { useNavigate } from "react-router-dom";
@@ -19,18 +19,28 @@ function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         const [donationsRes, collectionRes] = await Promise.all([
-          axios.get("/api/donations/my-donations", { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get("/api/collections", { headers: { Authorization: `Bearer ${token}` } })
+          axiosInstance.get("/donations/my-donations", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axiosInstance.get("/collections", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
 
         setDonations(donationsRes.data || []);
 
         // Calculate total collection
-        const total = collectionRes.data.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        const total = collectionRes.data.reduce(
+          (sum, item) => sum + (item.quantity || 0),
+          0
+        );
         setTotalCollection(total);
 
         // Calculate user's total contribution
-        const userTotal = donationsRes.data.reduce((sum, donation) => sum + (donation.quantity || 0), 0);
+        const userTotal = donationsRes.data.reduce(
+          (sum, donation) => sum + (donation.quantity || 0),
+          0
+        );
         setYourContribution(userTotal);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -100,10 +110,21 @@ function Dashboard() {
         {/* Collection Summary */}
         <section className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
           {[
-            { title: "Total Collection", value: totalCollection, color: "text-yellow-400" },
-            { title: "Your Contribution", value: yourContribution, color: "text-green-400" },
+            {
+              title: "Total Collection",
+              value: totalCollection,
+              color: "text-yellow-400",
+            },
+            {
+              title: "Your Contribution",
+              value: yourContribution,
+              color: "text-green-400",
+            },
           ].map(({ title, value, color }) => (
-            <div key={title} className="bg-gray-800 p-6 rounded-lg shadow-md text-center">
+            <div
+              key={title}
+              className="bg-gray-800 p-6 rounded-lg shadow-md text-center"
+            >
               <h2 className="text-lg font-semibold">{title}</h2>
               <p className={`text-2xl font-bold ${color}`}>{value} items</p>
             </div>
@@ -112,10 +133,14 @@ function Dashboard() {
 
         {/* Donations List */}
         <section className="mt-8">
-          <h2 className="text-2xl font-bold text-yellow-400 mb-4">Your Donations</h2>
+          <h2 className="text-2xl font-bold text-yellow-400 mb-4">
+            Your Donations
+          </h2>
           {donations.length === 0 ? (
             <div className="text-center">
-              <p className="text-lg font-semibold text-gray-300">You have no donations yet.</p>
+              <p className="text-lg font-semibold text-gray-300">
+                You have no donations yet.
+              </p>
               <button
                 onClick={() => navigate("/new-donation")}
                 className="mt-4 bg-yellow-400 text-gray-900 px-6 py-3 rounded font-bold hover:bg-yellow-500 transition"
@@ -131,7 +156,9 @@ function Dashboard() {
                   className="bg-gray-800 p-4 rounded shadow-md flex justify-between"
                 >
                   <span>{donation.clothesType}</span>
-                  <span className="font-bold text-green-400">{donation.quantity} items</span>
+                  <span className="font-bold text-green-400">
+                    {donation.quantity} items
+                  </span>
                 </li>
               ))}
             </ul>

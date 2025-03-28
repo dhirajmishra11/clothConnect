@@ -3,25 +3,34 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import ngoImage from "../images/ngo-panel.webp";
 import { logout } from "../store/slices/authSlice";
-import { FiLogOut, FiCalendar, FiTruck, FiInbox, FiCheckCircle } from "react-icons/fi";
+import {
+  FiLogOut,
+  FiCalendar,
+  FiTruck,
+  FiInbox,
+  FiCheckCircle,
+} from "react-icons/fi";
+import axiosInstance from "../utils/axiosInstance";
 
 function NGOPanel() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     async function fetchNGOData() {
       try {
-        const response = await fetch("/api/ngo/dashboard");
-        const data = await response.json();
-        setUser(data.user);
+        const response = await axiosInstance.get("/ngo/dashboard", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(response.data.user);
       } catch (error) {
         console.error("Error fetching NGO data:", error);
       }
     }
     fetchNGOData();
-  }, []);
+  }, [token]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white font-sans">
@@ -35,7 +44,9 @@ function NGOPanel() {
           <h1 className="text-5xl font-bold text-yellow-400 bg-gray-800 bg-opacity-75 px-6 py-3 rounded-lg shadow-lg">
             NGO Dashboard - {user?.name || "Welcome"}
           </h1>
-          <p className="mt-4 text-lg text-yellow-300">Manage donations efficiently</p>
+          <p className="mt-4 text-lg text-yellow-300">
+            Manage donations efficiently
+          </p>
         </div>
       </header>
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 import logo from "../images/logo.webp"; // Logo image
 import loginPanelImage from "../images/login-panel.webp"; // Background image
 
@@ -31,10 +31,17 @@ function Register() {
     }
 
     try {
-      await axios.post("/api/users/register", { name, email, password, role }); // Include role in registration
+      await axiosInstance.post("/users/register", {
+        name,
+        email,
+        password,
+        role,
+      });
       navigate("/login"); // Redirect on success
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed. Try again.");
+      setError(
+        err.response?.data?.message || "Registration failed. Try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -43,7 +50,6 @@ function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900">
       <div className="flex flex-col md:flex-row items-center bg-gray-800 text-white shadow-lg rounded-lg overflow-hidden w-full max-w-4xl">
-        
         {/* Left Panel - Image */}
         <div className="hidden md:block w-1/2">
           <img

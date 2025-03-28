@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { login } from "../store/slices/authSlice";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 import logo from "../images/logo.webp";
 import loginPanelImage from "../images/login-panel.webp";
 
@@ -18,7 +18,13 @@ function Login() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate(user.role === "donor" ? "/dashboard" : user.role === "ngo" ? "/ngo" : "/admin");
+      navigate(
+        user.role === "donor"
+          ? "/dashboard"
+          : user.role === "ngo"
+          ? "/ngo"
+          : "/admin"
+      );
     }
   }, [user, navigate]);
 
@@ -28,11 +34,20 @@ function Login() {
     setError(""); // Clear previous errors
 
     try {
-      const { data } = await axios.post("/api/users/login", { email, password });
+      const { data } = await axiosInstance.post("/users/login", {
+        email,
+        password,
+      });
       dispatch(login(data));
 
       // Redirect based on user role
-      navigate(data.user.role === "donor" ? "/dashboard" : data.user.role === "ngo" ? "/ngo" : "/admin");
+      navigate(
+        data.user.role === "donor"
+          ? "/dashboard"
+          : data.user.role === "ngo"
+          ? "/ngo"
+          : "/admin"
+      );
     } catch (err) {
       setError("Invalid email or password"); // Generic error message
     } finally {
@@ -45,18 +60,31 @@ function Login() {
       <div className="flex flex-col md:flex-row items-center bg-gray-800 text-white shadow-lg rounded-lg overflow-hidden w-full max-w-4xl">
         {/* Left Panel */}
         <div className="hidden md:block w-1/2">
-          <img src={loginPanelImage} alt="Login Panel" className="w-full h-full object-cover" />
+          <img
+            src={loginPanelImage}
+            alt="Login Panel"
+            className="w-full h-full object-cover"
+          />
         </div>
 
         {/* Right Panel */}
         <div className="w-full md:w-1/2 p-8">
           <div className="flex justify-center mb-6">
-            <img src={logo} alt="Logo" className="w-24 h-24 rounded-full shadow-lg" />
+            <img
+              src={logo}
+              alt="Logo"
+              className="w-24 h-24 rounded-full shadow-lg"
+            />
           </div>
           <form onSubmit={handleSubmit}>
-            <h2 className="text-3xl font-bold mb-6 text-center text-yellow-400">Login to ClothConnect</h2>
+            <h2 className="text-3xl font-bold mb-6 text-center text-yellow-400">
+              Login to ClothConnect
+            </h2>
             {error && (
-              <div className="bg-red-500 text-white p-3 rounded mb-4 text-center" role="alert">
+              <div
+                className="bg-red-500 text-white p-3 rounded mb-4 text-center"
+                role="alert"
+              >
                 {error}
               </div>
             )}

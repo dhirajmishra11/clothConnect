@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 import { useSelector } from "react-redux";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -14,7 +14,7 @@ function Pickups() {
   useEffect(() => {
     const fetchPickups = async () => {
       try {
-        const response = await axios.get("/api/ngos/pickups", {
+        const response = await axiosInstance.get("/ngos/pickups", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setPickups(response.data);
@@ -30,8 +30,8 @@ function Pickups() {
   const handlePicked = async (pickupId) => {
     setLoading(true);
     try {
-      await axios.put(
-        `/api/pickups/${pickupId}`,
+      await axiosInstance.put(
+        `/pickups/${pickupId}`,
         { status: "Picked" },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -48,8 +48,8 @@ function Pickups() {
   const handleReject = async (pickupId) => {
     setLoading(true);
     try {
-      await axios.put(
-        `/api/pickups/${pickupId}`,
+      await axiosInstance.put(
+        `/pickups/${pickupId}`,
         { status: "Rejected" },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -78,7 +78,9 @@ function Pickups() {
             >
               <div>
                 <p className="font-bold text-xl">{pickup.title}</p>
-                <p className="text-gray-300">Clothes Type: {pickup.clothesType}</p>
+                <p className="text-gray-300">
+                  Clothes Type: {pickup.clothesType}
+                </p>
                 <p className="text-gray-300">Quantity: {pickup.quantity}</p>
                 <p className="text-gray-300">Address: {pickup.address}</p>
               </div>
@@ -116,7 +118,9 @@ function Pickups() {
             <h3 className="text-xl font-bold mb-4 text-yellow-500">
               {selectedPickup.title}
             </h3>
-            <p className="text-gray-300">Clothes Type: {selectedPickup.clothesType}</p>
+            <p className="text-gray-300">
+              Clothes Type: {selectedPickup.clothesType}
+            </p>
             <p className="text-gray-300">Quantity: {selectedPickup.quantity}</p>
             <p className="text-gray-300">Address: {selectedPickup.address}</p>
             <p className="text-gray-300">City: {selectedPickup.city}</p>

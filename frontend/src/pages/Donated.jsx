@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 import { useSelector } from "react-redux";
 
 function Donated() {
@@ -20,8 +20,8 @@ function Donated() {
     }
 
     try {
-      await axios.post(
-        "/api/ngos/donated",
+      await axiosInstance.post(
+        "/ngos/donated",
         { clothesType, quantity },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -40,7 +40,10 @@ function Donated() {
       </h1>
       {message && <p className="text-green-500 mb-4 text-center">{message}</p>}
       {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
-      <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-6 bg-gray-800 p-6 rounded-lg shadow-lg">
+      <form
+        onSubmit={handleSubmit}
+        className="max-w-md mx-auto space-y-6 bg-gray-800 p-6 rounded-lg shadow-lg"
+      >
         {/* Clothes Type */}
         <div>
           <label className="block mb-2 font-bold text-yellow-500">

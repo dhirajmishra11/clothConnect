@@ -5,7 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/api": "https://clothconnect-backend.onrender.com", // 
+
+      "/api": "https://clothconnect-backend.onrender.com", // backendapi
+
     },
   },
 });

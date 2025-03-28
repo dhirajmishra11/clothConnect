@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 import { useSelector } from "react-redux";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -14,12 +14,15 @@ function PendingDonations() {
   useEffect(() => {
     const fetchPendingDonations = async () => {
       try {
-        const response = await axios.get("/api/ngos/pending-donations", {
+        const response = await axiosInstance.get("/ngos/pending-donations", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setDonations(response.data);
       } catch (error) {
-        console.error("Error fetching pending donations:", error.response || error);
+        console.error(
+          "Error fetching pending donations:",
+          error.response || error
+        );
         toast.error("Failed to fetch pending donations.");
       }
     };
@@ -30,12 +33,14 @@ function PendingDonations() {
   const handleAccept = async (donationId) => {
     setLoading(true);
     try {
-      await axios.put(
-        `/api/ngos/donations/${donationId}`,
+      await axiosInstance.put(
+        `/ngos/donations/${donationId}`,
         { status: "Accepted" },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setDonations((prev) => prev.filter((donation) => donation._id !== donationId));
+      setDonations((prev) =>
+        prev.filter((donation) => donation._id !== donationId)
+      );
       toast.success("Donation accepted successfully!");
     } catch (error) {
       console.error("Error accepting donation:", error);
@@ -48,10 +53,12 @@ function PendingDonations() {
   const handleReject = async (donationId) => {
     setLoading(true);
     try {
-      await axios.delete(`/api/ngos/donations/${donationId}`, {
+      await axiosInstance.delete(`/ngos/donations/${donationId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setDonations((prev) => prev.filter((donation) => donation._id !== donationId));
+      setDonations((prev) =>
+        prev.filter((donation) => donation._id !== donationId)
+      );
       toast.success("Donation rejected successfully!");
     } catch (error) {
       console.error("Error rejecting donation:", error);
@@ -64,7 +71,9 @@ function PendingDonations() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8 font-sans">
       <ToastContainer />
-      <h1 className="text-4xl font-bold mb-6 text-yellow-500">Pending Donations</h1>
+      <h1 className="text-4xl font-bold mb-6 text-yellow-500">
+        Pending Donations
+      </h1>
       {donations.length === 0 ? (
         <p className="text-center text-gray-400">No pending donations found.</p>
       ) : (
@@ -76,7 +85,9 @@ function PendingDonations() {
             >
               <div>
                 <p className="font-bold text-xl">{donation.title}</p>
-                <p className="text-gray-300">Clothes Type: {donation.clothesType}</p>
+                <p className="text-gray-300">
+                  Clothes Type: {donation.clothesType}
+                </p>
                 <p className="text-gray-300">Quantity: {donation.quantity}</p>
                 <p className="text-gray-300">Address: {donation.address}</p>
               </div>
@@ -114,14 +125,19 @@ function PendingDonations() {
             <h3 className="text-xl font-bold mb-4 text-yellow-500">
               {selectedDonation.title}
             </h3>
-            <p className="text-gray-300">Clothes Type: {selectedDonation.clothesType}</p>
-            <p className="text-gray-300">Quantity: {selectedDonation.quantity}</p>
+            <p className="text-gray-300">
+              Clothes Type: {selectedDonation.clothesType}
+            </p>
+            <p className="text-gray-300">
+              Quantity: {selectedDonation.quantity}
+            </p>
             <p className="text-gray-300">Address: {selectedDonation.address}</p>
             <p className="text-gray-300">City: {selectedDonation.city}</p>
             <p className="text-gray-300">Pincode: {selectedDonation.pincode}</p>
             <p className="text-gray-300">Phone: {selectedDonation.phone}</p>
             <p className="text-gray-300">
-              Pickup Date: {new Date(selectedDonation.pickupDate).toDateString()}
+              Pickup Date:{" "}
+              {new Date(selectedDonation.pickupDate).toDateString()}
             </p>
             <div className="flex justify-end space-x-4 mt-4">
               <button

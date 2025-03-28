@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 import { useSelector } from "react-redux";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -14,7 +14,7 @@ function Donors() {
   useEffect(() => {
     const fetchDonors = async () => {
       try {
-        const response = await axios.get("/api/admin/users", {
+        const response = await axiosInstance.get("/admin/users", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setDonors(response.data.filter((user) => user.role === "donor"));
@@ -28,7 +28,7 @@ function Donors() {
   const handleDeactivate = async (donorId) => {
     setLoading(true);
     try {
-      await axios.delete(`/api/users/${donorId}`, {
+      await axiosInstance.delete(`/users/${donorId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setDonors((prev) => prev.filter((donor) => donor._id !== donorId));
@@ -49,7 +49,10 @@ function Donors() {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {donors.map((donor) => (
-            <div key={donor._id} className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <div
+              key={donor._id}
+              className="bg-gray-800 p-6 rounded-lg shadow-lg"
+            >
               <div className="flex items-center mb-4">
                 <FiUserCheck className="text-yellow-500 text-2xl mr-2" />
                 <h2 className="text-xl font-semibold">{donor.name}</h2>
