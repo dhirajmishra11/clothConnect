@@ -85,7 +85,7 @@ function LandingPage() {
             </button>
 
             {/* Navigation Links Inside Drawer */}
-            {["Home", "Register", "Login", "About Us", "Description"].map(
+            {["-","-","Home", "Register", "Login", "About Us", "Description"].map(
               (item) => (
                 <Link
                   key={item}
