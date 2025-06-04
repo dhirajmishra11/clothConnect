@@ -86,7 +86,7 @@ function NotFound() {
           </Link>
           <span className="text-gray-300 dark:text-gray-600">|</span>
           <Link
-            to="/donor"
+            to="/dashboard"
             className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
           >
             Do Donations
