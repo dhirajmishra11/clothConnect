@@ -110,7 +110,7 @@ function LandingPage() {
                 </Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/about">
+                <Link to="/register">
                   <Button size="lg" variant="outline" className="mt-3 sm:mt-0">
                     Learn More
                   </Button>
