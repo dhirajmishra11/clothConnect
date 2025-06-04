@@ -1,14 +1,31 @@
-const NGO = require("../models/NGO");
+const User = require("../models/User");
 const Donation = require("../models/Donation");
+const Pickup = require("../models/Pickup");
+const Collection = require("../models/Collection");
 const Notification = require("../models/Notification");
+const AuditLog = require("../models/AuditLog");
 const { Parser } = require("json2csv");
-const Pickup = require("../models/Pickup"); // Import the Pickup model
-const Collection = require("../models/Collection"); // Import the Collection model
+const notificationService = require('../utils/notificationService');
+
+// Helper function to verify NGO role
+const verifyNGOAuth = (user) => {
+  if (!user || user.role !== 'ngo') {
+    throw new Error('Unauthorized - NGO access required');
+  }
+};
 
 exports.createNGO = async (req, res) => {
   try {
-    const { name, email, phone, address } = req.body;
-    const ngo = await NGO.create({ name, email, phone, address });
+    const { name, email, password, phone, address, ngoRegistration } = req.body;
+    const ngo = await User.create({
+      name,
+      email,
+      password,
+      phone,
+      address,
+      role: "ngo",
+      ngoRegistration,
+    });
     res.status(201).json(ngo);
   } catch (error) {
     res.status(500).json({ message: "Error creating NGO", error });
@@ -17,7 +34,7 @@ exports.createNGO = async (req, res) => {
 
 exports.getNGOs = async (req, res) => {
   try {
-    const ngos = await NGO.find();
+    const ngos = await User.find({ role: "ngo" }).select("-password");
     res.json(ngos);
   } catch (error) {
     res.status(500).json({ message: "Error fetching NGOs", error });
@@ -27,12 +44,15 @@ exports.getNGOs = async (req, res) => {
 exports.verifyNGO = async (req, res) => {
   try {
     const { id } = req.params;
-    const ngo = await NGO.findByIdAndUpdate(
+    const ngo = await User.findByIdAndUpdate(
       id,
       { verified: true },
       { new: true }
-    );
-    if (!ngo) return res.status(404).json({ message: "NGO not found" });
+    ).select("-password");
+
+    if (!ngo) {
+      return res.status(404).json({ message: "NGO not found" });
+    }
     res.json(ngo);
   } catch (error) {
     res.status(500).json({ message: "Error verifying NGO", error });
@@ -41,9 +61,9 @@ exports.verifyNGO = async (req, res) => {
 
 exports.getNGODonations = async (req, res) => {
   try {
-    const donations = await Donation.find({ ngo: req.user._id }).sort({
-      createdAt: -1,
-    });
+    const donations = await Donation.find({ ngo: req.user._id })
+      .sort({ createdAt: -1 })
+      .populate("donor", "name email");
     res.json(donations);
   } catch (error) {
     res.status(500).json({ message: "Error fetching donations", error });
@@ -52,40 +72,67 @@ exports.getNGODonations = async (req, res) => {
 
 exports.updateDonationStatus = async (req, res) => {
   try {
+    verifyNGOAuth(req.user);
     const { id } = req.params;
     const { status } = req.body;
 
-    // Find the donation
-    const donation = await Donation.findById(id);
-
+    const donation = await Donation.findById(id).populate('donor', 'name email');
     if (!donation) {
       return res.status(404).json({ message: "Donation not found" });
     }
 
-    // If the donation is accepted, move it to the pickups collection
-    if (status === "Accepted") {
-      await Pickup.create({
-        donor: donation.donor,
-        ngo: req.user._id,
-        title: donation.title, // Ensure title is transferred
-        clothesType: donation.clothesType,
-        quantity: donation.quantity,
-        address: donation.address, // Ensure address is transferred
-        city: donation.city,
-        pincode: donation.pincode,
-        phone: donation.phone,
-        pickupDate: donation.pickupDate,
-        message: donation.message,
-        status: "Scheduled",
-      });
-    }
+    switch (status) {
+      case "Accepted":
+        // Create pickup record
+        const pickup = await Pickup.create({
+          donor: donation.donor._id,
+          ngo: req.user._id,
+          title: donation.title,
+          clothesType: donation.clothesType,
+          quantity: donation.quantity,
+          address: donation.address,
+          city: donation.city,
+          pincode: donation.pincode,
+          phone: donation.phone,
+          pickupDate: donation.pickupDate,
+          message: donation.message,
+          status: "Scheduled"
+        });
 
-    // Delete the donation after transferring to pickups
-    await donation.deleteOne();
+        // Delete the original donation after creating pickup
+        await Donation.findByIdAndDelete(id);
+
+        // Send notification
+        await notificationService.sendNotification({
+          user: donation.donor._id,
+          title: "Donation Accepted",
+          message: `Your donation has been accepted by ${req.user.name}`,
+          type: "donation_accepted"
+        });
+
+        break;
+
+      case "Rejected":
+        await Donation.findByIdAndDelete(id);
+        await notificationService.sendNotification({
+          user: donation.donor._id,
+          title: "Donation Rejected",
+          message: `Your donation has been rejected by ${req.user.name}`,
+          type: "donation_rejected"
+        });
+        break;
+
+      default:
+        return res.status(400).json({ message: "Invalid status" });
+    }
 
     res.json({ message: "Donation status updated successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error updating donation status", error });
+    if (error.message.includes('Unauthorized')) {
+      res.status(403).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Error updating donation status", error: error.message });
+    }
   }
 };
 
@@ -165,46 +212,57 @@ exports.getNotifications = async (req, res) => {
 
 exports.getPendingDonations = async (req, res) => {
   try {
-    const donations = await Donation.find({ status: "Pending" });
+    verifyNGOAuth(req.user);
+    const donations = await Donation.find({ 
+        status: "Pending",
+      city: req.user.city // Only show donations in NGO's city
+    }).populate("donor", "name email");
     res.json(donations);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching pending donations", error });
+    if (error.message.includes('Unauthorized')) {
+      res.status(403).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Error fetching pending donations", error: error.message });
+    }
   }
 };
 
 exports.getPickups = async (req, res) => {
   try {
+    verifyNGOAuth(req.user);
     const pickups = await Pickup.find({
       ngo: req.user._id,
-      status: "Scheduled",
-    });
+      status: "Scheduled"
+    }).populate("donor", "name email");
     res.json(pickups);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching pickups", error });
+    if (error.message.includes('Unauthorized')) {
+      res.status(403).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Error fetching pickups", error: error.message });
+    }
   }
 };
 
 exports.getCollection = async (req, res) => {
   try {
-    const donations = await Donation.find({
-      ngo: req.user._id,
-      status: "Picked Up",
-    });
-    const aggregatedData = donations.reduce((acc, donation) => {
-      acc[donation.clothesType] =
-        (acc[donation.clothesType] || 0) + donation.quantity;
-      return acc;
-    }, {});
-    res.json(aggregatedData);
+    verifyNGOAuth(req.user);
+    const collections = await Collection.find({ 
+      ngo: req.user._id 
+    }).sort({ createdAt: -1 });
+    res.json(collections);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching collection", error });
+    if (error.message.includes('Unauthorized')) {
+      res.status(403).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Error fetching collection", error: error.message });
+    }
   }
 };
 
 exports.markAsDonated = async (req, res) => {
   try {
+    verifyNGOAuth(req.user);
     const { clothesType, quantity } = req.body;
 
     if (!clothesType || clothesType.trim() === "") {
@@ -214,27 +272,87 @@ exports.markAsDonated = async (req, res) => {
       return res.status(400).json({ message: "Invalid quantity provided" });
     }
 
-    const collection = await Collection.findOne({ clothesType });
+    // Create or update collection record
+    let collection = await Collection.findOne({ 
+      ngo: req.user._id,
+      clothesType 
+    });
+
+    if (collection) {
+      collection.quantity += parseInt(quantity);
+      await collection.save();
+    } else {
+      collection = await Collection.create({
+        ngo: req.user._id,
+        clothesType,
+        quantity: parseInt(quantity)
+      });
+    }
+
+    res.json({ message: "Items marked as donated successfully", collection });
+  } catch (error) {
+    if (error.message.includes('Unauthorized')) {
+      res.status(403).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Error marking items as donated", error: error.message });
+    }
+  }
+};
+
+exports.distributeCollectionItems = async (req, res) => {
+  try {
+    verifyNGOAuth(req.user);
+    const { id } = req.params;
+    const { quantity } = req.body;
+
+    if (!quantity || isNaN(quantity) || quantity <= 0) {
+      return res.status(400).json({ message: "Invalid quantity provided" });
+    }
+
+    const collection = await Collection.findOne({ 
+      _id: id,
+      ngo: req.user._id 
+    });
 
     if (!collection) {
-      return res
-        .status(404)
-        .json({ message: "Clothes type not found in collection" });
+      return res.status(404).json({ message: "Collection not found" });
     }
 
-    if (collection.quantity < quantity) {
-      return res
-        .status(400)
-        .json({ message: "Not enough clothes in collection" });
+    const availableItems = collection.quantity - collection.distributed;
+    if (quantity > availableItems) {
+      return res.status(400).json({ 
+        message: `Cannot distribute more than available items. Available: ${availableItems}` 
+      });
     }
 
-    collection.quantity -= quantity;
+    collection.distributed += parseInt(quantity);
     await collection.save();
 
-    res.json({ message: "Clothes marked as donated successfully" });
+    // Log the distribution activity
+    await AuditLog.create({
+      user: req.user._id,
+      action: 'distribute',
+      resourceType: 'Collection',
+      resourceId: collection._id,
+      details: `Distributed ${quantity} items of ${collection.clothesType}`,
+      changes: {
+        before: { distributed: collection.distributed - quantity },
+        after: { distributed: collection.distributed }
+      }
+    });
+
+    res.json({ 
+      message: "Items distributed successfully", 
+      collection 
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error marking clothes as donated", error });
+    if (error.message.includes('Unauthorized')) {
+      res.status(403).json({ message: error.message });
+    } else {
+      res.status(500).json({ 
+        message: "Error distributing items", 
+        error: error.message 
+      });
+    }
   }
 };

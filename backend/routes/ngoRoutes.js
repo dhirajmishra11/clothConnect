@@ -14,10 +14,12 @@ const {
   getPickups,
   getCollection,
   markAsDonated,
+  distributeCollectionItems,
 } = require("../controllers/ngoController");
 
 const router = express.Router();
 
+// NGO Management Routes
 router.post("/", protect, createNGO);
 router.get("/", protect, async (req, res) => {
   try {
@@ -28,15 +30,24 @@ router.get("/", protect, async (req, res) => {
   }
 });
 router.put("/:id/verify", protect, verifyNGO);
+
+// Donation Management Routes
 router.get("/donations", protect, getNGODonations); // Fetch NGO-specific donations
 router.put("/donations/:id", protect, updateDonationStatus); // Update donation status
-router.get("/analytics", protect, getNGOAnalytics); // Fetch NGO analytics
 router.put("/donations/:id/assign", protect, assignDonationToTeam); // Assign donation to team
+
+// Collection Management Routes
+router.get("/collection", protect, getCollection); // Fetch collected donations
+router.post("/donated", protect, markAsDonated); // Mark clothes as donated
+router.put("/collection/:id/distribute", protect, distributeCollectionItems); // Distribute collection items
+
+// Analytics and Export Routes
+router.get("/analytics", protect, getNGOAnalytics); // Fetch NGO analytics
 router.get("/export", protect, exportDonations); // Export donations
+
+// Notification and Status Routes
 router.get("/notifications", protect, getNotifications); // Fetch notifications
 router.get("/pending-donations", protect, getPendingDonations); // Fetch pending donations
 router.get("/pickups", protect, getPickups); // Fetch donations accepted by the NGO
-router.get("/collection", protect, getCollection); // Fetch collected donations
-router.post("/donated", protect, markAsDonated); // Mark clothes as donated
 
 module.exports = router;

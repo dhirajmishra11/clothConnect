@@ -1,170 +1,203 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
 import { useSelector } from "react-redux";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { FiEye, FiCheckCircle, FiX, FiXCircle } from "react-icons/fi";
+import { FiEye, FiCheckCircle, FiXCircle } from "react-icons/fi";
+import { PageLayout } from "../components/layout/PageLayout";
+import { Card } from "../components/cards/Card";
+import { Button } from "../components/common/Button";
+import { DonationCard } from "../components/cards/DonationCard";
+import { FloatingWindow } from "../components/FloatingWindow";
+import { StaggeredList } from "../components/animations/StaggeredList";
 
 function PendingDonations() {
   const { token } = useSelector((state) => state.auth);
   const [donations, setDonations] = useState([]);
   const [selectedDonation, setSelectedDonation] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchPendingDonations = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const response = await axiosInstance.get("/ngos/pending-donations", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setDonations(response.data);
       } catch (error) {
-        console.error(
-          "Error fetching pending donations:",
-          error.response || error
-        );
-        toast.error("Failed to fetch pending donations.");
+        console.error("Error fetching pending donations:", error);
+        setError(error.userMessage || "Failed to fetch pending donations");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchPendingDonations();
   }, [token]);
 
-  const handleAccept = async (donationId) => {
-    setLoading(true);
+  const handleAccept = async (donation) => {
     try {
       await axiosInstance.put(
-        `/ngos/donations/${donationId}`,
-        { status: "Accepted" },
+        `/donations/${donation._id}`,
+        {
+          status: "Accepted",
+          ngoId: token.userId, // Add the NGO ID for authorization
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setDonations((prev) =>
-        prev.filter((donation) => donation._id !== donationId)
+        prev.filter((d) => d._id !== donation._id)
       );
-      toast.success("Donation accepted successfully!");
+      setSelectedDonation(null);
     } catch (error) {
       console.error("Error accepting donation:", error);
-      toast.error("Failed to accept donation.");
-    } finally {
-      setLoading(false);
+      setError(error.userMessage || "Failed to accept donation");
     }
   };
 
-  const handleReject = async (donationId) => {
-    setLoading(true);
+  const handleReject = async (donation) => {
     try {
-      await axiosInstance.delete(`/ngos/donations/${donationId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDonations((prev) =>
-        prev.filter((donation) => donation._id !== donationId)
+      await axiosInstance.put(
+        `/donations/${donation._id}`,
+        {
+          status: "Rejected",
+          ngoId: token.userId,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success("Donation rejected successfully!");
+      setDonations((prev) =>
+        prev.filter((d) => d._id !== donation._id)
+      );
+      setSelectedDonation(null);
     } catch (error) {
       console.error("Error rejecting donation:", error);
-      toast.error("Failed to reject donation.");
-    } finally {
-      setLoading(false);
+      setError(error.userMessage || "Failed to reject donation");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8 font-sans">
-      <ToastContainer />
-      <h1 className="text-4xl font-bold mb-6 text-yellow-500">
-        Pending Donations
-      </h1>
-      {donations.length === 0 ? (
-        <p className="text-center text-gray-400">No pending donations found.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {donations.map((donation) => (
-            <div
-              key={donation._id}
-              className="bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col justify-between hover:shadow-xl transition-shadow"
-            >
-              <div>
-                <p className="font-bold text-xl">{donation.title}</p>
-                <p className="text-gray-300">
-                  Clothes Type: {donation.clothesType}
-                </p>
-                <p className="text-gray-300">Quantity: {donation.quantity}</p>
-                <p className="text-gray-300">Address: {donation.address}</p>
-              </div>
-              <div className="mt-4 flex justify-end space-x-4">
-                <button
-                  onClick={() => setSelectedDonation(donation)}
-                  className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
-                  disabled={loading}
-                >
-                  <FiEye className="mr-2" /> Open
-                </button>
-                <button
-                  onClick={() => handleAccept(donation._id)}
-                  className="flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition"
-                  disabled={loading}
-                >
-                  <FiCheckCircle className="mr-2" /> Accept
-                </button>
+    <PageLayout
+      title="Pending Donations"
+      subtitle="Review and manage incoming donation requests"
+    >
+      <div className="space-y-6">
+        {error && (
+          <div className="p-4 bg-red-100 border border-red-200 text-red-800 rounded-lg dark:bg-red-900/50 dark:border-red-800 dark:text-red-200">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              </Card>
+            ))}
+          </div>
+        ) : donations.length === 0 ? (
+          <Card>
+            <div className="text-center p-6">
+              <p className="text-gray-500 dark:text-gray-400">
+                No pending donations to review
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <StaggeredList>
+            {donations.map((donation) => (
+              <DonationCard
+                key={donation._id}
+                donation={donation}
+                type="ngo"
+                onView={() => setSelectedDonation(donation)}
+                onAccept={() => handleAccept(donation)}
+                onReject={() => handleReject(donation)}
+              />
+            ))}
+          </StaggeredList>
+        )}
+      </div>
+
+      <FloatingWindow
+        isOpen={!!selectedDonation}
+        onClose={() => setSelectedDonation(null)}
+        title="Donation Details"
+      >
+        {selectedDonation && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Details</h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Title</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedDonation.title}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Clothes Type</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedDonation.clothesType}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Quantity</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedDonation.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    {selectedDonation.address}, {selectedDonation.city} - {selectedDonation.pincode}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Contact</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedDonation.phone}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pickup Date</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    {new Date(selectedDonation.pickupDate).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+                {selectedDonation.message && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Message</p>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedDonation.message}</p>
+                  </div>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* Modal for Viewing Donation Details */}
-      {selectedDonation && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md relative">
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-200 transition"
-              onClick={() => setSelectedDonation(null)}
-            >
-              <FiX size={20} />
-            </button>
-            <h3 className="text-xl font-bold mb-4 text-yellow-500">
-              {selectedDonation.title}
-            </h3>
-            <p className="text-gray-300">
-              Clothes Type: {selectedDonation.clothesType}
-            </p>
-            <p className="text-gray-300">
-              Quantity: {selectedDonation.quantity}
-            </p>
-            <p className="text-gray-300">Address: {selectedDonation.address}</p>
-            <p className="text-gray-300">City: {selectedDonation.city}</p>
-            <p className="text-gray-300">Pincode: {selectedDonation.pincode}</p>
-            <p className="text-gray-300">Phone: {selectedDonation.phone}</p>
-            <p className="text-gray-300">
-              Pickup Date:{" "}
-              {new Date(selectedDonation.pickupDate).toDateString()}
-            </p>
-            <div className="flex justify-end space-x-4 mt-4">
-              <button
-                onClick={() => handleReject(selectedDonation._id)}
-                className="flex items-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
-                disabled={loading}
-              >
-                <FiXCircle className="mr-2" /> Reject
-              </button>
-              <button
-                onClick={() => handleAccept(selectedDonation._id)}
-                className="flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition"
-                disabled={loading}
-              >
-                <FiCheckCircle className="mr-2" /> Accept
-              </button>
-              <button
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="ghost"
                 onClick={() => setSelectedDonation(null)}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition"
               >
                 Close
-              </button>
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handleReject(selectedDonation)}
+              >
+                <FiXCircle className="w-4 h-4 mr-2" />
+                Reject
+              </Button>
+              <Button
+                variant="success"
+                onClick={() => handleAccept(selectedDonation)}
+              >
+                <FiCheckCircle className="w-4 h-4 mr-2" />
+                Accept
+              </Button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </FloatingWindow>
+    </PageLayout>
   );
 }
 

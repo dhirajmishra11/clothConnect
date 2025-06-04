@@ -1,13 +1,11 @@
 const Pickup = require("../models/Pickup");
-const Collection = require("../models/Collection"); // Import the Collection model
+const Collection = require("../models/Collection");
 
 exports.createPickup = async (req, res) => {
   try {
-    const { address, pickupDate } = req.body;
     const pickup = await Pickup.create({
+      ...req.body,
       donor: req.user._id,
-      address,
-      pickupDate,
     });
     res.status(201).json(pickup);
   } catch (error) {
@@ -17,7 +15,10 @@ exports.createPickup = async (req, res) => {
 
 exports.getPickups = async (req, res) => {
   try {
-    const pickups = await Pickup.find().populate("donor", "name email");
+    const pickups = await Pickup.find({ donor: req.user._id })
+      .populate("donor", "name email")
+      .populate("ngo", "name email")
+      .sort({ createdAt: -1 });
     res.json(pickups);
   } catch (error) {
     res.status(500).json({ message: "Error fetching pickup requests", error });

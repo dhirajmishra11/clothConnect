@@ -1,17 +1,28 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-function Loader() {
+const Loader = ({ size = "md", className = "" }) => {
+  const sizes = {
+    sm: "w-5 h-5",
+    md: "w-8 h-8",
+    lg: "w-12 h-12",
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-800">
+    <div className={`flex justify-center items-center ${className}`}>
       <motion.div
-        className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.5 }}
-      ></motion.div>
+        className={`${sizes[size]} border-4 border-primary-200 border-t-primary-600 rounded-full`}
+        animate={{
+          rotate: 360,
+        }}
+        transition={{
+          duration: 1,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      />
     </div>
   );
-}
+};
 
 export default Loader;

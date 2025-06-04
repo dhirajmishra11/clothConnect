@@ -1,171 +1,260 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "../components/common/Button";
+import { Card } from "../components/cards/Card";
+import { DonationCard } from "../components/cards/DonationCard";
+import { DashboardStats } from "../components/dashboard/DashboardStats";
+import { PageLayout } from "../components/layout/PageLayout";
+import { StaggeredList } from "../components/animations/StaggeredList";
+import { FloatingWindow } from "../components/FloatingWindow";
+import { FiMapPin, FiPhone, FiCalendar, FiBox, FiTag, FiMessageSquare } from 'react-icons/fi';
 import { logout } from "../store/slices/authSlice";
-import { useNavigate } from "react-router-dom";
-import donorImage from "../images/donor-panel.webp";
-import Loader from "../components/Loader";
+
+const DetailRow = ({ icon: Icon, label, value }) => (
+  <div className="flex items-start space-x-3">
+    <div className="flex-shrink-0 mt-1">
+      <Icon className="w-5 h-5 text-gray-400" />
+    </div>
+    <div>
+      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="mt-1 text-sm text-gray-900 dark:text-white">{value}</p>
+    </div>
+  </div>
+);
 
 function Dashboard() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user, token } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
   const [donations, setDonations] = useState([]);
-  const [totalCollection, setTotalCollection] = useState(0);
-  const [yourContribution, setYourContribution] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState([]);
+  const [selectedDonation, setSelectedDonation] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const [donationsRes, collectionRes] = await Promise.all([
-          axiosInstance.get("/donations/my-donations", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axiosInstance.get("/collections", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+        const donationsRes = await axiosInstance.get("/donations/my-donations");
+        const donations = donationsRes.data || [];
+        setDonations(donations);
+
+        // Calculate total items donated
+        const totalItems = donations.reduce((sum, donation) => sum + (donation.quantity || 0), 0);
+        
+        // Calculate environmental impact (example: 2kg CO2 saved per item)
+        const co2Saved = totalItems * 2;
+
+        setStats([
+          {
+            label: "Total Donations",
+            value: donations.length,
+            change: donations.length > 0 ? Math.round((donations.length / 10) * 100) : 0,
+            icon: "🎁",
+            iconBackground: "bg-blue-100 text-blue-600",
+            variant: "donor",
+          },
+          {
+            label: "Items Donated",
+            value: totalItems,
+            change: totalItems > 0 ? Math.round((totalItems / 50) * 100) : 0,
+            icon: "👕",
+            iconBackground: "bg-green-100 text-green-600",
+            variant: "success",
+          },
+          {
+            label: "Impact Score",
+            value: donations.length > 0 ? Math.min(5, donations.length / 2).toFixed(1) : "0.0",
+            change: donations.length > 0 ? Math.round((donations.length / 10) * 100) : 0,
+            icon: "⭐",
+            iconBackground: "bg-yellow-100 text-yellow-600",
+          },
+          {
+            label: "CO₂ Saved",
+            value: co2Saved + "kg",
+            change: co2Saved > 0 ? Math.round((co2Saved / 100) * 100) : 0,
+            icon: "🌱",
+            iconBackground: "bg-emerald-100 text-emerald-600",
+            variant: "success",
+          },
         ]);
-
-        setDonations(donationsRes.data || []);
-
-        // Calculate total collection
-        const total = collectionRes.data.reduce(
-          (sum, item) => sum + (item.quantity || 0),
-          0
-        );
-        setTotalCollection(total);
-
-        // Calculate user's total contribution
-        const userTotal = donationsRes.data.reduce(
-          (sum, donation) => sum + (donation.quantity || 0),
-          0
-        );
-        setYourContribution(userTotal);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        setError(error.userMessage || "Failed to load dashboard data");
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [token]);
+  }, []);
+
+  const handleViewDetails = (donation) => {
+    setSelectedDonation(donation);
+    setIsDetailsOpen(true);
+  };
 
   const handleLogout = () => {
     dispatch(logout());
     navigate("/login");
   };
 
-  if (loading) {
-    return <Loader />;
-  }
-
   return (
-    <div className="min-h-screen flex bg-gray-900 text-white">
-      {/* Sidebar */}
-      <aside className="w-72 bg-gray-800 p-6">
-        <h2 className="text-2xl font-bold text-yellow-400 mb-6">Dashboard</h2>
-        <nav className="space-y-4">
-          {[
-            { label: "My Donations", path: "/my-donations" },
-            { label: "New Donation", path: "/new-donation" },
-            { label: "Edit Profile", path: "/profile-edit" },
-          ].map(({ label, path }) => (
-            <button
-              key={path}
-              onClick={() => navigate(path)}
-              className="w-full bg-gray-700 px-4 py-2 rounded text-yellow-300 font-bold hover:bg-gray-600 transition"
-            >
-              {label}
-            </button>
-          ))}
-          <button
-            onClick={handleLogout}
-            className="w-full bg-red-500 px-4 py-2 rounded font-bold hover:bg-red-700 transition"
-          >
+    <PageLayout
+      title={`Welcome back, ${user?.name}`}
+      subtitle="Here's an overview of your donation activity"
+      actions={
+        <div className="flex space-x-4">
+          <Link to="/new-donation">
+            <Button variant="primary" size="lg">
+              New Donation
+            </Button>
+          </Link>
+          <Button variant="outline" size="lg" onClick={handleLogout}>
             Logout
-          </button>
-        </nav>
-      </aside>
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-8">
+        <DashboardStats stats={stats} loading={loading} />
 
-      {/* Vertical Divider */}
-      <div className="w-1 bg-gray-700"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Recent Donations */}
+          <div className="lg:col-span-2">
+            <Card>
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Recent Donations
+                </h3>
+              </div>
+              <div className="p-6">
+                {error ? (
+                  <p className="text-center text-red-600 dark:text-red-400">{error}</p>
+                ) : donations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">No donations yet</p>
+                    <Link to="/new-donation">
+                      <Button variant="outline">Make Your First Donation</Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <StaggeredList className="space-y-4">
+                    {donations.map((donation) => (
+                      <DonationCard
+                        key={donation._id}
+                        donation={donation}
+                        onView={() => handleViewDetails(donation)}
+                      />
+                    ))}
+                  </StaggeredList>
+                )}
+              </div>
+            </Card>
+          </div>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8">
-        {/* Dashboard Header */}
-        <header
-          className="bg-gray-700 text-white p-6 rounded-lg shadow-md flex items-center justify-between"
-          style={{
-            backgroundImage: `url(${donorImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundBlendMode: "overlay",
-          }}
-        >
-          <h1 className="text-3xl font-bold">Welcome, {user?.name}</h1>
-        </header>
+          {/* Impact Summary */}
+          <div className="lg:col-span-1">
+            <Card className="h-full">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Your Impact</h3>
+              </div>
+              <div className="p-6">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      Environmental Impact
+                    </span>
+                    <span className="text-lg font-medium text-green-600 dark:text-green-400">
+                      {stats[3]?.value || "0kg"} CO₂ saved
+                    </span>
+                  </div>
+                  <div className="relative pt-1">
+                    <div className="flex mb-2 items-center justify-between">
+                      <div>
+                        <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-green-600 bg-green-200 dark:bg-green-900 dark:text-green-300">
+                          Progress
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-semibold inline-block text-green-600 dark:text-green-400">
+                          {stats[3]?.change || 0}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-green-200 dark:bg-green-900">
+                      <div
+                        style={{ width: `${stats[3]?.change || 0}%` }}
+                        className="transition-all duration-500 ease-out shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"
+                      />
+                    </div>
+                  </div>
 
-        {/* Collection Summary */}
-        <section className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {[
-            {
-              title: "Total Collection",
-              value: totalCollection,
-              color: "text-yellow-400",
-            },
-            {
-              title: "Your Contribution",
-              value: yourContribution,
-              color: "text-green-400",
-            },
-          ].map(({ title, value, color }) => (
-            <div
-              key={title}
-              className="bg-gray-800 p-6 rounded-lg shadow-md text-center"
-            >
-              <h2 className="text-lg font-semibold">{title}</h2>
-              <p className={`text-2xl font-bold ${color}`}>{value} items</p>
-            </div>
-          ))}
-        </section>
+                  <Link to="/impact" className="block">
+                    <Button variant="outline" className="w-full">
+                      View Full Impact Report
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
 
-        {/* Donations List */}
-        <section className="mt-8">
-          <h2 className="text-2xl font-bold text-yellow-400 mb-4">
-            Your Donations
-          </h2>
-          {donations.length === 0 ? (
-            <div className="text-center">
-              <p className="text-lg font-semibold text-gray-300">
-                You have no donations yet.
-              </p>
-              <button
-                onClick={() => navigate("/new-donation")}
-                className="mt-4 bg-yellow-400 text-gray-900 px-6 py-3 rounded font-bold hover:bg-yellow-500 transition"
-              >
-                Start Your First Donation
-              </button>
-            </div>
-          ) : (
-            <ul className="space-y-4">
-              {donations.map((donation) => (
-                <li
-                  key={donation._id}
-                  className="bg-gray-800 p-4 rounded shadow-md flex justify-between"
-                >
-                  <span>{donation.clothesType}</span>
-                  <span className="font-bold text-green-400">
-                    {donation.quantity} items
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </main>
-    </div>
+      <FloatingWindow
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        title="Donation Details"
+      >
+        {selectedDonation && (
+          <div className="space-y-6">
+            <DetailRow
+              icon={FiTag}
+              label="Title"
+              value={selectedDonation.title}
+            />
+            <DetailRow
+              icon={FiBox}
+              label="Items"
+              value={`${selectedDonation.quantity} ${selectedDonation.clothesType}`}
+            />
+            <DetailRow
+              icon={FiMapPin}
+              label="Location"
+              value={`${selectedDonation.address}, ${selectedDonation.city} - ${selectedDonation.pincode}`}
+            />
+            <DetailRow
+              icon={FiPhone}
+              label="Contact"
+              value={selectedDonation.phone}
+            />
+            <DetailRow
+              icon={FiCalendar}
+              label="Pickup Date"
+              value={new Date(selectedDonation.pickupDate).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            />
+            {selectedDonation.message && (
+              <DetailRow
+                icon={FiMessageSquare}
+                label="Message"
+                value={selectedDonation.message}
+              />
+            )}
+          </div>
+        )}
+      </FloatingWindow>
+    </PageLayout>
   );
 }
 

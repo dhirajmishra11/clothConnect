@@ -1,105 +1,144 @@
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../utils/axiosInstance";
 import { useSelector } from "react-redux";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { FiUserCheck, FiMail, FiXCircle } from "react-icons/fi";
+import { PageLayout } from "../components/layout/PageLayout";
+import { Card } from "../components/cards/Card";
+import { Button } from "../components/common/Button";
+import { Progress } from "../components/common/Progress";
+import { StaggeredList } from "../components/animations/StaggeredList";
+import { FiMail, FiPhone, FiPackage, FiCalendar } from "react-icons/fi";
+import axiosInstance from "../utils/axiosInstance";
+import { toast } from "react-toastify";
+import Loader from "../components/Loader";
 
 function Donors() {
-  const { token } = useSelector((state) => state.auth);
   const [donors, setDonors] = useState([]);
-  const [selectedDonor, setSelectedDonor] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    const fetchDonors = async () => {
-      try {
-        const response = await axiosInstance.get("/admin/users", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setDonors(response.data.filter((user) => user.role === "donor"));
-      } catch (error) {
-        toast.error("Failed to fetch donors.");
-      }
-    };
     fetchDonors();
-  }, [token]);
+  }, []);
 
-  const handleDeactivate = async (donorId) => {
-    setLoading(true);
+  const fetchDonors = async () => {
     try {
-      await axiosInstance.delete(`/users/${donorId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDonors((prev) => prev.filter((donor) => donor._id !== donorId));
-      toast.success("Donor deactivated successfully!");
+      setLoading(true);
+      const response = await axiosInstance.get("/admin/donors");
+      setDonors(response.data);
+      setError(null);
     } catch (error) {
-      toast.error("Failed to deactivate donor.");
+      const errorMessage = error.response?.data?.message || "Failed to fetch donors";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <ToastContainer />
-      <h1 className="text-4xl font-bold mb-6 text-yellow-500">Donors</h1>
-      {donors.length === 0 ? (
-        <p className="text-center text-gray-400">No donors found.</p>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {donors.map((donor) => (
-            <div
-              key={donor._id}
-              className="bg-gray-800 p-6 rounded-lg shadow-lg"
-            >
-              <div className="flex items-center mb-4">
-                <FiUserCheck className="text-yellow-500 text-2xl mr-2" />
-                <h2 className="text-xl font-semibold">{donor.name}</h2>
-              </div>
-              <p className="flex items-center text-gray-300">
-                <FiMail className="mr-2" /> {donor.email}
-              </p>
-              <div className="mt-4 flex justify-between">
-                <button
-                  onClick={() => setSelectedDonor(donor)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-                >
-                  View
-                </button>
-                <button
-                  onClick={() => handleDeactivate(donor._id)}
-                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
-                  disabled={loading}
-                >
-                  Deactivate
-                </button>
-              </div>
-            </div>
-          ))}
+  if (!user || user.role !== "admin") {
+    return (
+      <PageLayout>
+        <div className="text-center text-red-600">
+          Unauthorized access. This page is only for admin users.
         </div>
-      )}
+      </PageLayout>
+    );
+  }
 
-      {selectedDonor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg w-96">
-            <h3 className="text-xl font-bold mb-4 text-yellow-500">
-              {selectedDonor.name}
-            </h3>
-            <p>Email: {selectedDonor.email}</p>
-            <p>Role: {selectedDonor.role}</p>
-            <div className="flex justify-end space-x-4 mt-4">
-              <button
-                onClick={() => setSelectedDonor(null)}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
-              >
-                Close
-              </button>
-            </div>
+  return (
+    <PageLayout
+      title="Donor Management"
+      subtitle="View and manage donor profiles"
+    >
+      <div className="space-y-6">
+        {loading ? (
+          <div className="flex justify-center items-center min-h-[200px]">
+            <Loader size="lg" />
           </div>
-        </div>
-      )}
-    </div>
+        ) : error ? (
+          <Card>
+            <div className="text-center p-6 text-red-600">{error}</div>
+          </Card>
+        ) : donors.length === 0 ? (
+          <Card>
+            <div className="text-center p-6">
+              <p className="text-gray-500">No donors found.</p>
+            </div>
+          </Card>
+        ) : (
+          <StaggeredList>
+            {donors.map((donor) => (
+              <Card key={donor._id} className="overflow-hidden">
+                <div className="p-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <img
+                          src={donor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(donor.name)}&background=random`}
+                          alt={donor.name}
+                          className="w-10 h-10 rounded-full mr-3"
+                        />
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                            {donor.name}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            Joined {new Date(donor.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-sm text-gray-500 dark:text-gray-400">
+                        <p className="flex items-center">
+                          <FiMail className="mr-2" />
+                          {donor.email}
+                        </p>
+                        {donor.phone && (
+                          <p className="flex items-center">
+                            <FiPhone className="mr-2" />
+                            {donor.phone}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="flex items-center">
+                              <FiPackage className="mr-2" />
+                              Total Donations
+                            </span>
+                            <span>{donor.totalDonations || 0}</span>
+                          </div>
+                          <Progress
+                            value={(donor.totalDonations || 0) / 10 * 100}
+                            color="blue"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="flex items-center">
+                              <FiCalendar className="mr-2" />
+                              Last Active
+                            </span>
+                            <span>
+                              {donor.lastActive
+                                ? new Date(donor.lastActive).toLocaleDateString()
+                                : "Never"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </StaggeredList>
+        )}
+      </div>
+    </PageLayout>
   );
 }
 

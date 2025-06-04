@@ -6,6 +6,9 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import adminImage from "../images/admin-panel.webp";
 import "tailwindcss/tailwind.css";
+import { PageLayout } from "../components/layout/PageLayout";
+import { Card } from "../components/cards/Card";
+import { FiUsers, FiTrendingUp, FiBarChart2, FiHeart, FiBox } from "react-icons/fi";
 
 function AdminDashboard() {
   const dispatch = useDispatch();
@@ -35,8 +38,49 @@ function AdminDashboard() {
 
   if (loading) return <div className="flex justify-center items-center h-screen text-2xl">Loading...</div>;
 
+  const menuItems = [
+    {
+      title: "Manage Donors",
+      description: "View and manage donor accounts",
+      icon: FiUsers,
+      path: "/admin/donors",
+      color: "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
+    },
+    {
+      title: "NGO Management",
+      description: "Verify and manage NGO partners",
+      icon: FiHeart,
+      path: "/admin/ngos",
+      color: "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400"
+    },
+    {
+      title: "Analytics",
+      description: "View detailed platform analytics",
+      icon: FiBarChart2,
+      path: "/admin/analytics",
+      color: "bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400"
+    },
+    {
+      title: "Pending Donations",
+      description: "Review pending donation requests",
+      icon: FiBox,
+      path: "/admin/pending-donations",
+      color: "bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400"
+    },
+    {
+      title: "Platform Growth",
+      description: "Monitor user and donation growth",
+      icon: FiTrendingUp,
+      path: "/admin/growth",
+      color: "bg-pink-100 dark:bg-pink-900 text-pink-600 dark:text-pink-400"
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <PageLayout
+      title="Admin Panel"
+      subtitle="Manage and monitor platform activities"
+    >
       <motion.header
         className="bg-cover bg-center text-center py-24 shadow-lg"
         style={{ backgroundImage: `url(${adminImage})` }}
@@ -80,12 +124,40 @@ function AdminDashboard() {
         </div>
       </div>
 
+      <div className="container mx-auto px-6 py-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {menuItems.map((item) => (
+            <Card
+              key={item.path}
+              className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => navigate(item.path)}
+            >
+              <div className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className={`p-3 rounded-lg ${item.color}`}>
+                    <item.icon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
       <div className="fixed bottom-6 right-6 flex space-x-4">
         <button onClick={() => navigate("/admin/donors")} className="bg-blue-600 px-6 py-3 rounded-lg shadow-md hover:bg-blue-700 transition">Donors</button>
         <button onClick={() => navigate("/admin/ngos")} className="bg-green-600 px-6 py-3 rounded-lg shadow-md hover:bg-green-700 transition">NGOs</button>
         <button onClick={() => dispatch(logout())} className="bg-red-600 px-6 py-3 rounded-lg shadow-md hover:bg-red-700 transition">Logout</button>
       </div>
-    </div>
+    </PageLayout>
   );
 }
 
