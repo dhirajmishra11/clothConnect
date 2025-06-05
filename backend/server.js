@@ -8,14 +8,28 @@ const app = express();
 // Middleware
 app.use(express.json());
 // app.use(cors());
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://clothconnect.onrender.com'
-  ],
-  credentials: true,
-  exposedHeaders: ['Content-Disposition']
-}));
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://clothconnect.onrender.com",
+  // add any other frontend URLs here
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like Postman or curl)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+    exposedHeaders: ["Content-Disposition"],
+  })
+);
+
 
 // Import Routes
 const userRoutes = require("./routes/userRoutes");
