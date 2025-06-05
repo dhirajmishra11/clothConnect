@@ -45,7 +45,7 @@ function Login() {
     setError("");
 
     try {
-      const response = await axiosInstance.post("/api/users/login", {
+      const response = await axiosInstance.post("/users/login", {
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
         twoFactorCode: formData.twoFactorCode,
