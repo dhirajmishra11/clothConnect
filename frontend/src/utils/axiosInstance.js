@@ -3,7 +3,7 @@ import { store } from "../store/store";
 import { logout } from "../store/slices/authSlice";
 
 const axiosInstance = axios.create({
-  baseURL: "https://clothconnect-backend.onrender.com",
+  baseURL: "https://clothconnect-backend.onrender.com/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
